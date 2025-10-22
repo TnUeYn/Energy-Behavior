@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家用电器使用时间设置</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #555;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+
+        .appliances-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .appliance-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fafafa;
+            transition: all 0.3s;
+        }
+
+        .appliance-item.confirmed {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .appliance-item.confirmed label {
+            color: #155724;
+        }
+
+        .appliance-item input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+
+        .appliance-item label {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .time-scheduler {
+            display: none;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+
+        .time-scheduler.active {
+            display: block;
+        }
+
+        .time-section {
+            margin-bottom: 30px;
+        }
+
+        .time-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .time-section-header {
+            margin-bottom: 25px;
+        }
+
+        .time-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .time-section-header h4 {
+            margin: 0;
+            color: #555;
+            font-size: 16px;
+        }
+
+        .section-status {
+            font-size: 12px;
+            color: #666;
+            background-color: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 3px;
+        }
+
+        .time-section.locked {
+            opacity: 0.6;
+        }
+
+        .time-section.locked .time-grid {
+            pointer-events: none;
+        }
+
+        .time-section.locked .time-slots-display {
+            pointer-events: none;
+        }
+
+        .time-section.locked .section-status {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .time-section.completed .section-status {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .section-controls {
+            text-align: center;
+            margin-top: 15px;
+            pointer-events: auto;
+        }
+
+        .time-slots-display {
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            line-height: 1.4;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+
+        .status-pending {
+            background-color: #ffc107;
+        }
+
+        .status-completed {
+            background-color: #28a745;
+        }
+
+        .day-selector {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .day-tab {
+            padding: 10px 20px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .day-tab.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .time-grid {
+            display: grid;
+            grid-template-columns: 60px repeat(96, 1fr);
+            gap: 1px;
+            background-color: #eee;
+            border: 1px solid #ddd;
+            margin-top: 10px;
+        }
+
+        .time-label {
+            background-color: #f8f8f8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .time-slot {
+            background-color: white;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+
+        .time-slot:hover {
+            background-color: #f0f8ff;
+        }
+
+        .time-slot.selected {
+            background-color: #007bff;
+        }
+
+        .time-slot.selected:hover {
+            background-color: #0056b3;
+        }
+
+        .time-slot.confirmed {
+            background-color: #28a745 !important;
+            cursor: default !important;
+        }
+
+        .time-slot.confirmed:hover {
+            background-color: #28a745 !important;
+        }
+
+        .time-slot.disabled {
+            cursor: default !important;
+            opacity: 0.6;
+        }
+
+        .time-slot.disabled:hover {
+            background-color: #fff !important;
+        }
+
+        .hour-marker {
+            position: absolute;
+            top: -20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 10px;
+            color: #999;
+            pointer-events: none;
+        }
+
+        .legend {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+
+        .legend h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .legend ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .legend li {
+            margin-bottom: 5px;
+        }
+
+        .legend .color-box {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        .selected-color {
+            background-color: #007bff;
+        }
+
+        .export-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 12px 30px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        .export-btn:hover {
+            background-color: #218838;
+        }
+
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .results h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .appliance-result {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+
+        .appliance-result h4 {
+            margin-top: 0;
+            color: #555;
+        }
+
+        .time-summary {
+            display: flex;
+            gap: 20px;
+        }
+
+        .time-summary div {
+            flex: 1;
+        }
+
+        .time-summary h5 {
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>家用电器使用时间设置工具</h1>
+
+    <div class="container">
+        <h2>第一步：选择您拥有的电器</h2>
+        <div class="appliances-grid" id="appliances-grid">
+            <!-- 电器复选框将在这里动态生成 -->
+        </div>
+    </div>
+
+    <div class="container" id="time-scheduler-container">
+        <h2>第二步：设置电器使用时间</h2>
+        <div id="time-schedulers">
+            <!-- 时间设置界面将在这里动态生成 -->
+        </div>
+    </div>
+
+    <div class="container">
+        <button class="export-btn" onclick="exportResults()">导出设置结果</button>
+    </div>
+
+    <div class="container results" id="results">
+        <h3>设置结果</h3>
+        <div id="results-content">
+            <!-- 结果将在这里显示 -->
+        </div>
+    </div>
+
+    <div class="legend">
+        <h3>使用说明</h3>
+        <ul>
+            <li><span class="color-box selected-color"></span>蓝色区域表示已选择的使用时间段</li>
+            <li><span class="color-box" style="background-color: #28a745;"></span>绿色区域表示已确认的时间段（锁定状态）</li>
+            <li>每个时间格代表15分钟</li>
+            <li>点击或拖动鼠标选择时间段，再次点击取消选择</li>
+            <li>周中和周末可以独立确认和编辑</li>
+            <li>确认后该时间轴锁定，必须点击"重新编辑"才能修改</li>
+            <li>每个电器至少需要确认周中或周末中的一个</li>
+        </ul>
+    </div>
+
+    <script>
+        // 18个常见家用电器
+        const appliances = [
+            '电冰箱', '洗衣机', '空调', '热水器', '微波炉', '电饭煲',
+            '电磁炉', '电烤箱', '吸尘器', '电风扇', '饮水机', '电视机',
+            '电脑', '手机充电器', '电灯', '电热水壶', '咖啡机', '电吹风'
+        ];
+
+        // 存储每个电器的使用时间设置
+        const applianceSchedules = {};
+
+
+        // 初始化页面
+        function initPage() {
+            createApplianceCheckboxes();
+        }
+
+        // 创建电器复选框
+        function createApplianceCheckboxes() {
+            const grid = document.getElementById('appliances-grid');
+
+            appliances.forEach(appliance => {
+                const item = document.createElement('div');
+                item.className = 'appliance-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `appliance-${appliance}`;
+                checkbox.addEventListener('change', () => toggleApplianceScheduler(appliance));
+
+                const label = document.createElement('label');
+                label.htmlFor = `appliance-${appliance}`;
+                label.textContent = appliance;
+
+                item.appendChild(checkbox);
+                item.appendChild(label);
+                grid.appendChild(item);
+
+                // 初始化时间设置数据
+                applianceSchedules[appliance] = {
+                    owned: false,
+                    weekday: new Set(),
+                    weekend: new Set(),
+                    weekdayConfirmed: false,
+                    weekendConfirmed: false
+                };
+            });
+        }
+
+        // 切换电器时间设置界面
+        function toggleApplianceScheduler(appliance) {
+            const checkbox = document.getElementById(`appliance-${appliance}`);
+            const isChecked = checkbox.checked;
+
+            applianceSchedules[appliance].owned = isChecked;
+
+            let scheduler = document.getElementById(`scheduler-${appliance}`);
+
+            if (isChecked && !scheduler) {
+                createTimeScheduler(appliance);
+            } else if (scheduler) {
+                scheduler.style.display = isChecked ? 'block' : 'none';
+            }
+        }
+
+        // 创建时间设置界面
+        function createTimeScheduler(appliance) {
+            const container = document.getElementById('time-schedulers');
+
+            const scheduler = document.createElement('div');
+            scheduler.className = 'time-scheduler active';
+            scheduler.id = `scheduler-${appliance}`;
+
+            scheduler.innerHTML = `
+                <h3>${appliance} 使用时间设置</h3>
+
+                <div class="time-section weekday-section" id="weekday-section-${appliance}">
+                    <div class="time-section-header">
+                        <h4>周中 (周一-周五)</h4>
+                        <div class="section-status" id="weekday-status-${appliance}">
+                            <span class="status-text">可编辑</span>
+                        </div>
+                    </div>
+                    <div class="time-grid weekday-grid" id="weekday-grid-${appliance}">
+                        <div class="time-label">时间</div>
+                    </div>
+                    <div class="time-slots-display" id="weekday-slots-${appliance}">未选择时间段</div>
+                    <div class="section-controls" id="weekday-controls-${appliance}">
+                        <button class="confirm-btn confirm" onclick="confirmDaySchedule('${appliance}', 'weekday')">确认周中设置</button>
+                        <button class="confirm-btn edit" onclick="editDaySchedule('${appliance}', 'weekday')" style="display: none;">重新编辑周中</button>
+                    </div>
+                </div>
+
+                <div class="time-section weekend-section" id="weekend-section-${appliance}">
+                    <div class="time-section-header">
+                        <h4>周末 (周六-周日)</h4>
+                        <div class="section-status" id="weekend-status-${appliance}">
+                            <span class="status-text">可编辑</span>
+                        </div>
+                    </div>
+                    <div class="time-grid weekend-grid" id="weekend-grid-${appliance}">
+                        <div class="time-label">时间</div>
+                    </div>
+                    <div class="time-slots-display" id="weekend-slots-${appliance}">未选择时间段</div>
+                    <div class="section-controls" id="weekend-controls-${appliance}">
+                        <button class="confirm-btn confirm" onclick="confirmDaySchedule('${appliance}', 'weekend')">确认周末设置</button>
+                        <button class="confirm-btn edit" onclick="editDaySchedule('${appliance}', 'weekend')" style="display: none;">重新编辑周末</button>
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(scheduler);
+            createTimeSlotsForDay(appliance, 'weekday');
+            createTimeSlotsForDay(appliance, 'weekend');
+            updateTimeDisplays(appliance);
+            updateSectionStates(appliance);
+        }
+
+        // 创建特定日期类型的时间槽
+        function createTimeSlotsForDay(appliance, dayType) {
+            const gridId = dayType === 'weekday' ? `weekday-grid-${appliance}` : `weekend-grid-${appliance}`;
+            const grid = document.getElementById(gridId);
+
+            // 清空现有时间槽（除了时间标签）
+            while (grid.children.length > 1) {
+                grid.removeChild(grid.lastChild);
+            }
+
+            // 创建时间标签和时间槽
+            for (let hour = 0; hour < 24; hour++) {
+                for (let quarter = 0; quarter < 4; quarter++) {
+                    const slotIndex = hour * 4 + quarter;
+                    const timeString = `${hour.toString().padStart(2, '0')}:${(quarter * 15).toString().padStart(2, '0')}`;
+
+                    const slot = document.createElement('div');
+                    slot.className = 'time-slot';
+                    slot.dataset.slotIndex = slotIndex;
+                    slot.dataset.time = timeString;
+                    slot.title = timeString;
+
+                    // 如果是整点，添加小时标记
+                    if (quarter === 0) {
+                        const hourMarker = document.createElement('div');
+                        hourMarker.className = 'hour-marker';
+                        hourMarker.textContent = `${hour}:00`;
+                        slot.appendChild(hourMarker);
+                    }
+
+                    // 检查是否已选择
+                    if (applianceSchedules[appliance][dayType].has(slotIndex)) {
+                        slot.classList.add('selected');
+                    }
+
+                    slot.addEventListener('mousedown', (e) => startSelection(appliance, dayType, e));
+                    slot.addEventListener('mouseenter', (e) => continueSelection(appliance, dayType, e));
+                    slot.addEventListener('mouseup', () => endSelection());
+
+                    grid.appendChild(slot);
+                }
+            }
+        }
+
+        // 时间选择相关变量
+        let isSelecting = false;
+        let isDeselecting = false;
+        let startSlot = null;
+
+        // 开始选择
+        function startSelection(appliance, dayType, event) {
+            const slot = event.target.closest('.time-slot');
+            if (!slot) return;
+
+            const slotIndex = parseInt(slot.dataset.slotIndex);
+            isSelecting = true;
+            startSlot = slotIndex;
+
+            const isSelected = applianceSchedules[appliance][dayType].has(slotIndex);
+            isDeselecting = isSelected;
+
+            toggleSlot(appliance, dayType, slotIndex);
+        }
+
+        // 继续选择（拖动）
+        function continueSelection(appliance, dayType, event) {
+            if (!isSelecting) return;
+
+            const slot = event.target.closest('.time-slot');
+            if (!slot) return;
+
+            const currentSlot = parseInt(slot.dataset.slotIndex);
+            const minSlot = Math.min(startSlot, currentSlot);
+            const maxSlot = Math.max(startSlot, currentSlot);
+
+            // 更新从开始到当前的所有槽
+            const gridId = dayType === 'weekday' ? `weekday-grid-${appliance}` : `weekend-grid-${appliance}`;
+            for (let i = 0; i < 96; i++) {
+                const slotElement = document.querySelector(`#${gridId} .time-slot[data-slot-index="${i}"]`);
+                if (!slotElement) continue;
+
+                const shouldBeSelected = (i >= minSlot && i <= maxSlot) ? !isDeselecting : applianceSchedules[appliance][dayType].has(i);
+
+                if (shouldBeSelected) {
+                    if (!applianceSchedules[appliance][dayType].has(i)) {
+                        applianceSchedules[appliance][dayType].add(i);
+                        slotElement.classList.add('selected');
+                    }
+                } else {
+                    if (applianceSchedules[appliance][dayType].has(i)) {
+                        applianceSchedules[appliance][dayType].delete(i);
+                        slotElement.classList.remove('selected');
+                    }
+                }
+            }
+
+            // 更新时间显示
+            updateTimeDisplays(appliance);
+        }
+
+        // 结束选择
+        function endSelection() {
+            isSelecting = false;
+            isDeselecting = false;
+            startSlot = null;
+        }
+
+
+        // 切换单个时间槽
+        function toggleSlot(appliance, dayType, slotIndex) {
+            const schedule = applianceSchedules[appliance][dayType];
+
+            if (schedule.has(slotIndex)) {
+                schedule.delete(slotIndex);
+            } else {
+                schedule.add(slotIndex);
+            }
+
+            updateSlotVisual(appliance, slotIndex);
+            updateTimeDisplays(appliance);
+        }
+
+        // 更新时间槽视觉效果
+        function updateSlotVisual(appliance, slotIndex) {
+            // 更新周中时间槽
+            const weekdaySlot = document.querySelector(`#weekday-grid-${appliance} .time-slot[data-slot-index="${slotIndex}"]`);
+            if (weekdaySlot) {
+                if (applianceSchedules[appliance].weekday.has(slotIndex)) {
+                    weekdaySlot.classList.add('selected');
+                } else {
+                    weekdaySlot.classList.remove('selected');
+                }
+            }
+
+            // 更新周末时间槽
+            const weekendSlot = document.querySelector(`#weekend-grid-${appliance} .time-slot[data-slot-index="${slotIndex}"]`);
+            if (weekendSlot) {
+                if (applianceSchedules[appliance].weekend.has(slotIndex)) {
+                    weekendSlot.classList.add('selected');
+                } else {
+                    weekendSlot.classList.remove('selected');
+                }
+            }
+        }
+
+        // 更新时间显示
+        function updateTimeDisplays(appliance) {
+            // 更新周中时间段
+            const weekdaySlots = document.getElementById(`weekday-slots-${appliance}`);
+            if (weekdaySlots) {
+                weekdaySlots.innerHTML = formatTimeSlotsForDisplay(applianceSchedules[appliance].weekday);
+            }
+
+            // 更新周末时间段
+            const weekendSlots = document.getElementById(`weekend-slots-${appliance}`);
+            if (weekendSlots) {
+                weekendSlots.innerHTML = formatTimeSlotsForDisplay(applianceSchedules[appliance].weekend);
+            }
+        }
+
+        // 格式化时间段用于显示
+        function formatTimeSlotsForDisplay(slots) {
+            if (slots.size === 0) return '未选择时间段';
+
+            const sortedSlots = Array.from(slots).sort((a, b) => a - b);
+            const timeRanges = [];
+
+            let start = sortedSlots[0];
+            let prev = sortedSlots[0];
+
+            for (let i = 1; i < sortedSlots.length; i++) {
+                if (sortedSlots[i] !== prev + 1) {
+                    timeRanges.push(formatTimeRange(start, prev));
+                    start = sortedSlots[i];
+                }
+                prev = sortedSlots[i];
+            }
+            timeRanges.push(formatTimeRange(start, prev));
+
+            // 返回HTML格式，每个时间段占一行
+            return timeRanges.map(range => `<div>${range}</div>`).join('');
+        }
+
+        // 格式化时间段用于导出（纯文本格式）
+        function formatTimeSlotsForExport(slots) {
+            if (slots.size === 0) return '未设置';
+
+            const sortedSlots = Array.from(slots).sort((a, b) => a - b);
+            const timeRanges = [];
+
+            let start = sortedSlots[0];
+            let prev = sortedSlots[0];
+
+            for (let i = 1; i < sortedSlots.length; i++) {
+                if (sortedSlots[i] !== prev + 1) {
+                    timeRanges.push(formatTimeRange(start, prev));
+                    start = sortedSlots[i];
+                }
+                prev = sortedSlots[i];
+            }
+            timeRanges.push(formatTimeRange(start, prev));
+
+            return timeRanges.join(', ');
+        }
+
+        // 格式化时间范围
+        function formatTimeRange(startSlot, endSlot) {
+            const startTime = slotToTime(startSlot);
+            const endTime = slotToTime(endSlot + 1); // +1 because end is inclusive
+            return `${startTime}-${endTime}`;
+        }
+
+        // 插槽转时间
+        function slotToTime(slot) {
+            const hour = Math.floor(slot / 4);
+            const minute = (slot % 4) * 15;
+            return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        }
+
+
+        // 确认日期类型的时间设置
+        function confirmDaySchedule(appliance, dayType) {
+            const schedule = applianceSchedules[appliance];
+
+            // 检查是否至少设置了一个时间段
+            if (schedule[dayType].size === 0) {
+                alert(`请至少为${dayType === 'weekday' ? '周中' : '周末'}设置一个时间段后再确认`);
+                return;
+            }
+
+            // 标记为已确认
+            schedule[`${dayType}Confirmed`] = true;
+
+            // 锁定这个时间轴
+            lockDayGrid(appliance, dayType);
+
+            // 更新UI状态
+            updateSectionStates(appliance);
+
+            // 提示用户
+            alert(`${appliance}的${dayType === 'weekday' ? '周中' : '周末'}时间设置已确认并锁定！`);
+        }
+
+        // 编辑日期类型的时间设置
+        function editDaySchedule(appliance, dayType) {
+            const schedule = applianceSchedules[appliance];
+
+            // 取消确认状态
+            schedule[`${dayType}Confirmed`] = false;
+
+            // 解锁这个时间轴
+            unlockDayGrid(appliance, dayType);
+
+            // 更新UI状态
+            updateSectionStates(appliance);
+
+            // 提示用户
+            alert(`${appliance}的${dayType === 'weekday' ? '周中' : '周末'}已进入编辑模式，可以重新设置时间。`);
+        }
+
+        // 更新时间轴状态
+        function updateSectionStates(appliance) {
+            const schedule = applianceSchedules[appliance];
+
+            // 更新周中状态
+            updateDaySectionState(appliance, 'weekday');
+
+            // 更新周末状态
+            updateDaySectionState(appliance, 'weekend');
+        }
+
+        // 更新单个日期类型的时间轴状态
+        function updateDaySectionState(appliance, dayType) {
+            const schedule = applianceSchedules[appliance];
+            const section = document.getElementById(`${dayType}-section-${appliance}`);
+            const status = document.getElementById(`${dayType}-status-${appliance}`);
+            const controls = document.getElementById(`${dayType}-controls-${appliance}`);
+            const confirmBtn = controls.querySelector('.confirm');
+            const editBtn = controls.querySelector('.edit');
+
+            if (schedule[`${dayType}Confirmed`]) {
+                section.classList.remove('locked');
+                section.classList.add('completed');
+                status.innerHTML = '<span class="status-text">已确认</span>';
+                confirmBtn.style.display = 'none';
+                editBtn.style.display = 'inline-block';
+            } else {
+                // 未确认状态 - 确保可编辑
+                section.classList.remove('locked', 'completed');
+                status.innerHTML = '<span class="status-text">可编辑</span>';
+                confirmBtn.style.display = 'inline-block';
+                editBtn.style.display = 'none';
+            }
+        }
+
+        // 锁定指定日期类型的时间轴
+        function lockDayGrid(appliance, dayType) {
+            const gridId = dayType === 'weekday' ? `weekday-grid-${appliance}` : `weekend-grid-${appliance}`;
+            const grid = document.getElementById(gridId);
+            const schedule = applianceSchedules[appliance];
+
+            const slots = grid.querySelectorAll('.time-slot');
+            slots.forEach(slot => {
+                const slotIndex = parseInt(slot.dataset.slotIndex);
+                slot.classList.remove('selected');
+                if (schedule[dayType].has(slotIndex)) {
+                    slot.classList.add('confirmed');
+                } else {
+                    slot.classList.add('disabled');
+                }
+                // 移除事件监听器
+                slot.removeEventListener('mousedown', startSelection);
+                slot.removeEventListener('mouseenter', continueSelection);
+                slot.removeEventListener('mouseup', endSelection);
+            });
+        }
+
+        // 解锁指定日期类型的时间轴
+        function unlockDayGrid(appliance, dayType) {
+            const gridId = dayType === 'weekday' ? `weekday-grid-${appliance}` : `weekend-grid-${appliance}`;
+            const grid = document.getElementById(gridId);
+
+            // 重新创建时间轴（这会重新添加事件监听器）
+            createTimeSlotsForDay(appliance, dayType);
+        }
+
+        // 导出结果
+        function exportResults() {
+            const results = document.getElementById('results');
+            const resultsContent = document.getElementById('results-content');
+
+            resultsContent.innerHTML = '';
+
+            // 检查是否所有电器都至少确认了一个时间轴
+            let allHaveAtLeastOneConfirmed = true;
+            appliances.forEach(appliance => {
+                if (applianceSchedules[appliance].owned) {
+                    const schedule = applianceSchedules[appliance];
+                    if (!schedule.weekdayConfirmed && !schedule.weekendConfirmed) {
+                        allHaveAtLeastOneConfirmed = false;
+                    }
+                }
+            });
+
+            if (!allHaveAtLeastOneConfirmed) {
+                alert('请先至少确认每个电器的周中或周末时间设置后再导出结果');
+                return;
+            }
+
+            appliances.forEach(appliance => {
+                if (!applianceSchedules[appliance].owned) return;
+
+                const schedule = applianceSchedules[appliance];
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'appliance-result';
+
+                resultDiv.innerHTML = `
+                    <h4>${appliance}</h4>
+                    <div class="time-summary">
+                        <div>
+                            <h5>周中 (周一-周五)</h5>
+                            <p>${formatTimeSlotsForExport(schedule.weekday)}</p>
+                        </div>
+                        <div>
+                            <h5>周末 (周六-周日)</h5>
+                            <p>${formatTimeSlotsForExport(schedule.weekend)}</p>
+                        </div>
+                    </div>
+                `;
+
+                resultsContent.appendChild(resultDiv);
+            });
+
+            results.style.display = 'block';
+            results.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initPage);
+
+        // 防止拖动时选中文本
+        document.addEventListener('selectstart', (e) => {
+            if (isSelecting) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
