@@ -99,6 +99,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .time-section-header h4 {
@@ -135,6 +137,33 @@
         .time-section.completed .section-status {
             background-color: #d4edda;
             color: #155724;
+        }
+
+        .frequency-input {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .frequency-input label {
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        .frequency-input input {
+            width: 50px;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .frequency-input input:focus {
+            outline: none;
+            border-color: #007bff;
         }
 
         .section-controls {
@@ -358,10 +387,11 @@
     </style>
 </head>
 <body>
-    <h1>家用电器使用时间设置工具</h1>
+    <h1>家用电器使用时间设置工具 - 7月夏季数据收集</h1>
 
     <div class="container">
         <h2>第一步：选择您拥有的电器</h2>
+        <p style="color: #666; font-size: 14px; margin: 10px 0;">请勾选您家中实际拥有的电器设备</p>
         <div class="appliances-grid" id="appliances-grid">
             <!-- 电器复选框将在这里动态生成 -->
         </div>
@@ -375,35 +405,34 @@
     </div>
 
     <div class="container">
-        <button class="export-btn" onclick="exportResults()">导出设置结果</button>
+        <button class="export-btn" onclick="exportResults()">导出Excel数据</button>
     </div>
 
-    <div class="container results" id="results">
-        <h3>设置结果</h3>
-        <div id="results-content">
-            <!-- 结果将在这里显示 -->
-        </div>
-    </div>
 
     <div class="legend">
         <h3>使用说明</h3>
         <ul>
+            <li><strong>7月夏季数据收集：</strong>请回忆并填写7月份的电器使用情况</li>
             <li><span class="color-box selected-color"></span>蓝色区域表示已选择的使用时间段</li>
             <li><span class="color-box" style="background-color: #28a745;"></span>绿色区域表示已确认的时间段（锁定状态）</li>
-            <li>每个时间格代表15分钟</li>
-            <li>点击或拖动鼠标选择时间段，再次点击取消选择</li>
+            <li>每个时间格代表15分钟，请根据实际使用情况选择时间段</li>
+            <li><strong>使用频率填写：</strong>请在"每日使用频率"输入框中填写您回忆的实际使用次数</li>
+            <li>点击时间格选择时间段，再次点击取消选择</li>
             <li>周中和周末可以独立确认和编辑</li>
             <li>确认后该时间轴锁定，必须点击"重新编辑"才能修改</li>
-            <li>每个电器至少需要确认周中或周末中的一个</li>
+            <li>每个电器至少需要确认周中或周末中的一个时间轴</li>
+            <li>点击"导出Excel数据"下载包含使用频率汇总和所有19个电器时间表的Excel文件</li>
         </ul>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
-        // 18个常见家用电器
+        // 19个常见家用电器
         const appliances = [
-            '电冰箱', '洗衣机', '空调', '热水器', '微波炉', '电饭煲',
-            '电磁炉', '电烤箱', '吸尘器', '电风扇', '饮水机', '电视机',
-            '电脑', '手机充电器', '电灯', '电热水壶', '咖啡机', '电吹风'
+            '客厅灯', '客厅空调', '电视', '卧室灯', '卧室空调', '餐厨灯',
+            '电饭煲', '电磁炉', '抽油烟机', '微波炉', '空气炸锅', '卫生间灯',
+            '洗衣机', '吹风机', '电热水器', '燃气热水器', '台式电脑',
+            '笔记本电脑', '电风扇'
         ];
 
         // 存储每个电器的使用时间设置
@@ -442,7 +471,9 @@
                     weekday: new Set(),
                     weekend: new Set(),
                     weekdayConfirmed: false,
-                    weekendConfirmed: false
+                    weekendConfirmed: false,
+                    weekdayFrequency: 0,
+                    weekendFrequency: 0
                 };
             });
         }
@@ -477,6 +508,11 @@
                 <div class="time-section weekday-section" id="weekday-section-${appliance}">
                     <div class="time-section-header">
                         <h4>周中 (周一-周五)</h4>
+                        <div class="frequency-input">
+                            <label>每日使用频率：</label>
+                            <input type="number" id="weekday-frequency-${appliance}" min="0" max="5" value="0" onchange="updateFrequency('${appliance}', 'weekday')">
+                            <span>次</span>
+                        </div>
                         <div class="section-status" id="weekday-status-${appliance}">
                             <span class="status-text">可编辑</span>
                         </div>
@@ -494,6 +530,11 @@
                 <div class="time-section weekend-section" id="weekend-section-${appliance}">
                     <div class="time-section-header">
                         <h4>周末 (周六-周日)</h4>
+                        <div class="frequency-input">
+                            <label>每日使用频率：</label>
+                            <input type="number" id="weekend-frequency-${appliance}" min="0" max="2" value="0" onchange="updateFrequency('${appliance}', 'weekend')">
+                            <span>次</span>
+                        </div>
                         <div class="section-status" id="weekend-status-${appliance}">
                             <span class="status-text">可编辑</span>
                         </div>
@@ -558,6 +599,22 @@
                     grid.appendChild(slot);
                 }
             }
+        }
+
+        // 更新使用频率
+        function updateFrequency(appliance, dayType) {
+            const input = document.getElementById(`${dayType}-frequency-${appliance}`);
+            const frequency = parseInt(input.value) || 0;
+
+            // 限制频率范围
+            if (frequency < 0) input.value = 0;
+
+            // 根据日期类型设置不同的最大值限制
+            const maxValue = dayType === 'weekday' ? 5 : 2;
+            if (frequency > maxValue) input.value = maxValue;
+
+            // 更新数据
+            applianceSchedules[appliance][`${dayType}Frequency`] = parseInt(input.value) || 0;
         }
 
         // 时间选择相关变量
@@ -769,11 +826,15 @@
             // 解锁这个时间轴
             unlockDayGrid(appliance, dayType);
 
+            // 恢复频率输入框的值
+            const frequencyInput = document.getElementById(`${dayType}-frequency-${appliance}`);
+            frequencyInput.value = schedule[`${dayType}Frequency`] || 0;
+
             // 更新UI状态
             updateSectionStates(appliance);
 
             // 提示用户
-            alert(`${appliance}的${dayType === 'weekday' ? '周中' : '周末'}已进入编辑模式，可以重新设置时间。`);
+            alert(`${appliance}的${dayType === 'weekday' ? '周中' : '周末'}已进入编辑模式，可以重新设置时间和频率。`);
         }
 
         // 更新时间轴状态
@@ -842,55 +903,114 @@
             createTimeSlotsForDay(appliance, dayType);
         }
 
-        // 导出结果
+        // 导出结果为XLSX文件
         function exportResults() {
-            const results = document.getElementById('results');
-            const resultsContent = document.getElementById('results-content');
+            // 检查是否有至少一个电器被勾选
+            let hasAnyApplianceSelected = false;
+            appliances.forEach(appliance => {
+                if (applianceSchedules[appliance].owned) {
+                    hasAnyApplianceSelected = true;
+                }
+            });
 
-            resultsContent.innerHTML = '';
+            if (!hasAnyApplianceSelected) {
+                alert('请至少勾选一个电器后再导出结果');
+                return;
+            }
 
-            // 检查是否所有电器都至少确认了一个时间轴
-            let allHaveAtLeastOneConfirmed = true;
+            // 检查是否所有勾选的电器都至少确认了一个时间轴
+            let allSelectedHaveAtLeastOneConfirmed = true;
             appliances.forEach(appliance => {
                 if (applianceSchedules[appliance].owned) {
                     const schedule = applianceSchedules[appliance];
                     if (!schedule.weekdayConfirmed && !schedule.weekendConfirmed) {
-                        allHaveAtLeastOneConfirmed = false;
+                        allSelectedHaveAtLeastOneConfirmed = false;
                     }
                 }
             });
 
-            if (!allHaveAtLeastOneConfirmed) {
-                alert('请先至少确认每个电器的周中或周末时间设置后再导出结果');
+            if (!allSelectedHaveAtLeastOneConfirmed) {
+                alert('请先至少确认每个勾选电器的周中或周末时间设置后再导出结果');
                 return;
             }
 
+            // 创建工作簿
+            const workbook = XLSX.utils.book_new();
+
+            // 创建频率汇总表
+            const frequencyData = [['电器名称', '周中每日使用频率', '周末每日使用频率']];
             appliances.forEach(appliance => {
-                if (!applianceSchedules[appliance].owned) return;
-
                 const schedule = applianceSchedules[appliance];
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'appliance-result';
-
-                resultDiv.innerHTML = `
-                    <h4>${appliance}</h4>
-                    <div class="time-summary">
-                        <div>
-                            <h5>周中 (周一-周五)</h5>
-                            <p>${formatTimeSlotsForExport(schedule.weekday)}</p>
-                        </div>
-                        <div>
-                            <h5>周末 (周六-周日)</h5>
-                            <p>${formatTimeSlotsForExport(schedule.weekend)}</p>
-                        </div>
-                    </div>
-                `;
-
-                resultsContent.appendChild(resultDiv);
+                const weekdayFreq = schedule.owned ? schedule.weekdayFrequency : 0;
+                const weekendFreq = schedule.owned ? schedule.weekendFrequency : 0;
+                frequencyData.push([appliance, weekdayFreq, weekendFreq]);
             });
 
-            results.style.display = 'block';
-            results.scrollIntoView({ behavior: 'smooth' });
+            const frequencyWorksheet = XLSX.utils.aoa_to_sheet(frequencyData);
+            XLSX.utils.book_append_sheet(workbook, frequencyWorksheet, '使用频率汇总');
+
+            // 为所有19个电器创建时间表工作表（包括未勾选的）
+            appliances.forEach(appliance => {
+                const schedule = applianceSchedules[appliance];
+
+                // 生成电器的数据
+                const worksheetData = generateApplianceData(appliance, schedule);
+
+                // 创建工作表
+                const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+                // 设置列宽
+                const colWidths = [];
+                for (let i = 0; i < 192; i++) {
+                    colWidths.push({ wch: 6 }); // Col_xxx 需要更多宽度
+                }
+                worksheet['!cols'] = colWidths;
+
+                // 添加到工作簿
+                XLSX.utils.book_append_sheet(workbook, worksheet, appliance);
+            });
+
+            // 生成并下载XLSX文件
+            XLSX.writeFile(workbook, 'appliance_schedules.xlsx');
+
+            alert('电器时间表数据已导出为Excel文件！');
+        }
+
+        // 生成单个电器的数据（包含标题行和数据行）
+        function generateApplianceData(appliance, schedule) {
+            // 第一行：列标题 Col_1 到 Col_192
+            const headers = [];
+            for (let i = 1; i <= 192; i++) {
+                headers.push(`Col_${i}`);
+            }
+
+            // 第二行：数据行
+            const data = new Array(192).fill(0);
+
+            // 只有当电器被勾选时才填充数据，否则全为0
+            if (schedule.owned) {
+                // 填充周中数据（第1-96列，索引0-95）
+                if (schedule.weekdayConfirmed) {
+                    schedule.weekday.forEach(slotIndex => {
+                        if (slotIndex >= 0 && slotIndex < 96) {
+                            data[slotIndex] = 1;
+                        }
+                    });
+                }
+
+                // 填充周末数据（第97-192列，索引96-191）
+                if (schedule.weekendConfirmed) {
+                    schedule.weekend.forEach(slotIndex => {
+                        if (slotIndex >= 0 && slotIndex < 96) {
+                            data[slotIndex + 96] = 1;
+                        }
+                    });
+                }
+            }
+            // 如果电器未勾选，data数组保持全为0
+
+            // 返回包含标题行和数据行的数组
+            return [headers, data];
         }
 
         // 页面加载完成后初始化
